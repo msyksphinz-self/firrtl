@@ -109,6 +109,11 @@ class InstanceGraph(c: Circuit) {
   def getChildrenInstanceOfModule: mutable.LinkedHashMap[String, mutable.LinkedHashSet[(Instance, OfModule)]] =
     childInstances.map(kv => kv._1 -> kv._2.map(i => (Instance(i.name), OfModule(i.module))))
 
+  /** Given a circuit, returns a map from module name to a map
+    * in turn mapping instances names to corresponding module names
+    */
+  def getChildrenInstanceMap: Map[String, Map[String, String]] =
+    childInstances.view.map(kv => kv._1 -> kv._2.view.map(i => (i.name, i.module)).toMap).toMap
 
 }
 

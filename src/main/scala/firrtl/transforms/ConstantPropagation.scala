@@ -526,10 +526,9 @@ class ConstantPropagation extends Transform with ResolvedAnnotationPaths {
     }
 
   private def run(c: Circuit, dontTouchMap: Map[String, Set[String]]): Circuit = {
-    val iGraph = (new InstanceGraph(c)).graph
-    val moduleDeps = iGraph.getEdgeMap.map({ case (mod, children) =>
-      mod.module -> children.map(i => i.name -> i.module).toMap
-    })
+    val iGraphAnalysis = new InstanceGraph(c)
+    val iGraph = iGraphAnalysis.graph
+    val moduleDeps = iGraphAnalysis.getChildrenInstanceMap
 
     // This is a *relative* instance count, ie. how many there are when you visit each Module once
     // (even if it is instantiated multiple times)

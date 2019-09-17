@@ -132,11 +132,7 @@ class InlineInstances extends Transform with RegisteredTransform {
     val iGraph = new InstanceGraph(c)
     val namespaceMap = collection.mutable.Map[String, Namespace]()
     // Map of Module name to Map of instance name to Module name
-    val instMaps: Map[String, Map[String, String]] = {
-      iGraph.graph.getEdgeMap.view.map { case (mod, children) =>
-        mod.module -> children.view.map(i => i.name -> i.module).toMap
-      }.toMap
-    }
+    val instMaps: Map[String, Map[String, String]] = iGraph.getChildrenInstanceMap
 
     /** Add a prefix to all declarations updating a [[Namespace]] and appending to a [[RenameMap]] */
     def appendNamePrefix(
