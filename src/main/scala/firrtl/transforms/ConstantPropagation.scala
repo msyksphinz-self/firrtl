@@ -330,7 +330,7 @@ class ConstantPropagation extends Transform with ResolvedAnnotationPaths {
   def optimize(e: Expression): Expression = constPropExpression(new NodeMap(), Map.empty[String, String], Map.empty[String, Map[String, Literal]])(e)
   def optimize(e: Expression, nodeMap: NodeMap): Expression = constPropExpression(nodeMap, Map.empty[String, String], Map.empty[String, Map[String, Literal]])(e)
 
-  private def constPropExpression(nodeMap: NodeMap, instMap: Map[String, String], constSubOutputs: Map[String, Map[String, Literal]])(e: Expression): Expression = {
+  private def constPropExpression(nodeMap: NodeMap, instMap: collection.Map[String, String], constSubOutputs: Map[String, Map[String, Literal]])(e: Expression): Expression = {
     val old = e map constPropExpression(nodeMap, instMap, constSubOutputs)
     val propagated = old match {
       case p: DoPrim => constPropPrim(p)
@@ -370,7 +370,7 @@ class ConstantPropagation extends Transform with ResolvedAnnotationPaths {
   private def constPropModule(
       m: Module,
       dontTouches: Set[String],
-      instMap: Map[String, String],
+      instMap: collection.Map[String, String],
       constInputs: Map[String, Literal],
       constSubOutputs: Map[String, Map[String, Literal]]
     ): (Module, Map[String, Literal], Map[String, Map[String, Seq[Literal]]]) = {

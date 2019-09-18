@@ -132,7 +132,7 @@ class InlineInstances extends Transform with RegisteredTransform {
     val iGraph = new InstanceGraph(c)
     val namespaceMap = collection.mutable.Map[String, Namespace]()
     // Map of Module name to Map of instance name to Module name
-    val instMaps: Map[String, Map[String, String]] = iGraph.getChildrenInstanceMap
+    val instMaps = iGraph.getChildrenInstanceMap
 
     /** Add a prefix to all declarations updating a [[Namespace]] and appending to a [[RenameMap]] */
     def appendNamePrefix(
@@ -177,7 +177,7 @@ class InlineInstances extends Transform with RegisteredTransform {
       }
 
     def fixupRefs(
-      instMap: Map[String, String],
+      instMap: collection.Map[String, String],
       currentModule: IsModule,
       renames: RenameMap)(e: Expression): Expression = e match {
       case wsf@ WSubField(wr@ WRef(ref, _, InstanceKind, _), field, tpe, gen) =>
