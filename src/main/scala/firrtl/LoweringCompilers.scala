@@ -88,6 +88,9 @@ class MiddleFirrtlToLowFirrtl extends CoreTransform {
   def inputForm = MidForm
   def outputForm = LowForm
   def transforms = Seq(
+    new firrtl.transforms.CollapseVectors,
+    passes.InferTypes,
+    passes.CheckTypes,
     passes.LowerTypes,
     passes.ResolveKinds,
     passes.InferTypes,

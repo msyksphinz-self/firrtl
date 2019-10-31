@@ -446,8 +446,9 @@ circuit CustomMemory :
     val annos = Seq(ReplSeqMemAnnotation.parse("-c:CustomMemory:-o:"+confLoc))
     val res = compileAndEmit(CircuitState(parse(input), ChirrtlForm, annos))
     // TODO Until RemoveCHIRRTL is removed, enable will still drive validif for mask
-    res should containLine ("mem.W0_mask_0 <= validif(io_en, io_mask_0)")
-    res should containLine ("mem.W0_mask_1 <= validif(io_en, io_mask_1)")
+    res should containLine ("node _GEN_7 = validif(io_en, io_mask_0)")
+    res should containLine ("node _GEN_8 = validif(io_en, io_mask_1)")
+    res should containLine ("mem.W0_mask <= cat(_GEN_8, _GEN_7)")
     // Check the emitted conf
     checkMemConf(confLoc, mems)
     (new java.io.File(confLoc)).delete()
@@ -481,8 +482,9 @@ circuit CustomMemory :
                     InferReadWriteAnnotation)
     val res = compileAndEmit(CircuitState(parse(input), ChirrtlForm, annos))
     // TODO Until RemoveCHIRRTL is removed, enable will still drive validif for mask
-    res should containLine ("mem.RW0_wmask_0 <= validif(io_en, io_mask_0)")
-    res should containLine ("mem.RW0_wmask_1 <= validif(io_en, io_mask_1)")
+    res should containLine ("node _GEN_7 = validif(io_en, io_mask_0)")
+    res should containLine ("node _GEN_8 = validif(io_en, io_mask_1)")
+    res should containLine ("mem.RW0_wmask <= cat(_GEN_8, _GEN_7)")
     // Check the emitted conf
     checkMemConf(confLoc, mems)
     (new java.io.File(confLoc)).delete()
