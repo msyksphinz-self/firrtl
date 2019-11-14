@@ -166,7 +166,7 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       val nx = namespace.newName("_RAND")
       val rand = VRandom(bitWidth(t))
       val tx = SIntType(IntWidth(rand.realWidth))
-      declare("reg", nx, tx, NoInfo)
+      declare("logic", nx, tx, NoInfo)
       initials += Seq(wref(nx, tx), " = ", VRandom(bitWidth(t)), ";")
       Seq(nx, "[", bitWidth(t) - 1, ":0]")
     }
@@ -249,8 +249,8 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       val dirs = m.ports map { case Port(_, name, dir, tpe) =>
         (dir, tpe) match {
           case (_, AnalogType(_)) => "inout " // padded to length of output
-          case (Input, _) => "input "
-          case (Output, _) => "output"
+          case (Input, _) => "input logic "
+          case (Output, _) => "output logic"
         }
       }
       // Turn types into strings, all ports must be GroundTypes
@@ -294,14 +294,14 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
         case sx@Connect(info, loc@WRef(_, _, PortKind | WireKind | InstanceKind, _), expr) =>
           assign(loc, expr, info)
         case sx: DefWire =>
-          declare("wire", sx.name, sx.tpe, sx.info)
+          declare("logic", sx.name, sx.tpe, sx.info)
         case sx: DefRegister =>
-          declare("reg", sx.name, sx.tpe, sx.info)
+          declare("logic", sx.name, sx.tpe, sx.info)
           val e = wref(sx.name, sx.tpe)
           regUpdate(e, sx.clock, sx.reset, sx.init)
           initialize(e, sx.reset, sx.init)
         case sx: DefNode =>
-          declare("wire", sx.name, sx.value.tpe, sx.info)
+          declare("logic", sx.name, sx.value.tpe, sx.info)
           assign(WRef(sx.name, sx.value.tpe, NodeKind, SourceFlow), sx.value, sx.info)
         case sx: Stop =>
           simulate(sx.clk, sx.en, stop(sx.ret), Some("STOP_COND"), sx.info)
@@ -340,7 +340,7 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
           val fullSize = sx.depth * (sx.dataType match {
                                        case GroundType(IntWidth(width)) => width
                                      })
-          val decl = if (fullSize > (1 << 29)) "reg /* sparse */" else "reg"
+          val decl = if (fullSize > (1 << 29)) "reg /* sparse */" else "logic"
           declareVectorType(decl, sx.name, sx.dataType, sx.depth, sx.info)
           initialize_mem(sx)
           if (sx.readLatency != 0 || sx.writeLatency != 1)
@@ -351,9 +351,9 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
             val addr = memPortField(sx, r, "addr")
             // Ports should share an always@posedge, so can't have intermediary wire
 
-            declare("wire", LowerTypes.loweredName(data), data.tpe, sx.info)
-            declare("wire", LowerTypes.loweredName(addr), addr.tpe, sx.info)
-            // declare("wire", LowerTypes.loweredName(en), en.tpe)
+            declare("logic", LowerTypes.loweredName(data), data.tpe, sx.info)
+            declare("logic", LowerTypes.loweredName(addr), addr.tpe, sx.info)
+            // declare("logic", LowerTypes.loweredName(en), en.tpe)
 
             //; Read port
             assign(addr, netlist(addr), NoInfo) // Info should come from addr connection
@@ -377,10 +377,10 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
             //Ports should share an always@posedge, so can't have intermediary wire
             val clk = netlist(memPortField(sx, w, "clk"))
 
-            declare("wire", LowerTypes.loweredName(data), data.tpe, sx.info)
-            declare("wire", LowerTypes.loweredName(addr), addr.tpe, sx.info)
-            declare("wire", LowerTypes.loweredName(mask), mask.tpe, sx.info)
-            declare("wire", LowerTypes.loweredName(en), en.tpe, sx.info)
+            declare("logic", LowerTypes.loweredName(data), data.tpe, sx.info)
+            declare("logic", LowerTypes.loweredName(addr), addr.tpe, sx.info)
+            declare("logic", LowerTypes.loweredName(mask), mask.tpe, sx.info)
+            declare("logic", LowerTypes.loweredName(en), en.tpe, sx.info)
 
             // Write port
             // Info should come from netlist
