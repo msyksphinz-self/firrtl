@@ -45,7 +45,7 @@ class RemoveReset extends Transform {
         case reg @ DefRegister(_, _, _, _, _, init) if invalids.contains(we(init)) =>
           reg.copy(reset = Utils.zero, init = WRef(reg))
         case reg @ DefRegister(_, rname, _, _, reset, init)
-            if reset != Utils.zero && reset.tpe != AsyncResetType =>
+            if reset != Utils.zero && reset.tpe != AsyncResetType && reset.tpe != AsyncResetNType =>
           // Add register reset to map
           resets(rname) = Reset(reset, init)
           reg.copy(reset = Utils.zero, init = WRef(reg))

@@ -81,7 +81,7 @@ object FlattenRegUpdate {
 
     def onStmt(stmt: Statement): Statement = stmt.map(onStmt) match {
       case reg @ DefRegister(_, rname, _,_, resetCond, _) =>
-        assert(resetCond.tpe == AsyncResetType || resetCond == Utils.zero,
+        assert(resetCond.tpe == AsyncResetType || resetCond.tpe == AsyncResetNType || resetCond == Utils.zero,
           "Synchronous reset should have already been made explicit!")
         val ref = WRef(reg)
         val update = Connect(NoInfo, ref, constructRegUpdate(netlist.getOrElse(ref, ref)))

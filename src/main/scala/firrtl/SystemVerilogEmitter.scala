@@ -57,7 +57,8 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
     // One always block per async reset register, (Clock, Reset, Content)
     // An alternative approach is to have one always block per combination of clock and async reset,
     // but Formality doesn't allow more than 1 statement inside async reset always blocks
-    val asyncResetAlwaysBlocks = mutable.ArrayBuffer[(Expression, Expression, Seq[Any])]()
+    val asyncResetAlwaysBlocks  = mutable.ArrayBuffer[(Expression, Expression, Seq[Any])]()
+    val asyncResetNAlwaysBlocks = mutable.ArrayBuffer[(Expression, Expression, Seq[Any])]()
     // Used to determine type of initvar for initializing memories
     var maxMemSize: BigInt = BigInt(0)
     val initials = ArrayBuffer[Seq[Any]]()
@@ -112,6 +113,7 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
         case m: Mux =>
           if (m.tpe == ClockType) throw EmitterException("Cannot emit clock muxes directly")
           if (m.tpe == AsyncResetType) throw EmitterException("Cannot emit async reset muxes directly")
+          if (m.tpe == AsyncResetNType) throw EmitterException("Cannot emit async reset N muxes directly")
 
           lazy val _if     = Seq(tabs, "if (", m.cond, ") begin")
           lazy val _else   = Seq(tabs, "end else begin")
@@ -143,10 +145,14 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       if (weq(init, r)) { // Synchronous Reset
         noResetAlwaysBlocks.getOrElseUpdate(clk, ArrayBuffer[Seq[Any]]()) ++= addUpdate(netlist(r), "")
       } else { // Asynchronous Reset
-        assert(reset.tpe == AsyncResetType, "Error! Synchronous reset should have been removed!")
+        assert(reset.tpe == AsyncResetType || reset.tpe == AsyncResetNType, "Error! Synchronous reset should have been removed!")
         val tv = init
         val fv = netlist(r)
-        asyncResetAlwaysBlocks += ((clk, reset, addUpdate(Mux(reset, tv, fv, mux_type_and_widths(tv, fv)), "")))
+        if (reset.tpe == AsyncResetType) {
+          asyncResetAlwaysBlocks  += ((clk, reset, addUpdate(Mux(reset, tv, fv, mux_type_and_widths(tv, fv)), "")))
+        } else {
+          asyncResetNAlwaysBlocks += ((clk, reset, addUpdate(Mux(DoPrim(Not, Seq(reset), Nil, BoolType), tv, fv, mux_type_and_widths(tv, fv)), "")))
+        }
       }
     }
 
@@ -178,6 +184,10 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       reset.tpe match {
         case AsyncResetType =>
           asyncInitials += Seq("if (", reset, ") begin")
+          asyncInitials += Seq(tab, e, " = ", init, ";")
+          asyncInitials += Seq("end")
+        case AsyncResetNType =>
+          asyncInitials += Seq("if (!", reset, ") begin")
           asyncInitials += Seq(tab, e, " = ", init, ";")
           asyncInitials += Seq("end")
         case _ => // do nothing
@@ -474,16 +484,23 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       }
 
       for ((clk, content) <- noResetAlwaysBlocks if content.nonEmpty) {
-        emit(Seq(tab, "always @(posedge ", clk, ") begin"))
+        emit(Seq(tab, "always_ff @(posedge ", clk, ") begin"))
         for (line <- content) emit(Seq(tab, tab, line))
         emit(Seq(tab, "end"))
       }
 
       for ((clk, reset, content) <- asyncResetAlwaysBlocks if content.nonEmpty) {
-        emit(Seq(tab, "always @(posedge ", clk, " or posedge ", reset, ") begin"))
+        emit(Seq(tab, "always_ff @(posedge ", clk, ", posedge ", reset, ") begin"))
         for (line <- content) emit(Seq(tab, tab, line))
         emit(Seq(tab, "end"))
       }
+
+      for ((clk, reset, content) <- asyncResetNAlwaysBlocks if content.nonEmpty) {
+        emit(Seq(tab, "always_ff @(posedge ", clk, ", negedge ", reset, ") begin"))
+        for (line <- content) emit(Seq(tab, tab, line))
+        emit(Seq(tab, "end"))
+      }
+
       emit(Seq("endmodule"))
     }
 

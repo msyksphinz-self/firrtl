@@ -252,6 +252,7 @@ class InferWidths extends Transform with ResolvedAnnotationPaths {
     case (t1: SIntType, t2: SIntType) => Seq(WGeq(t1.width, t2.width))
     case (ClockType, ClockType) => Nil
     case (AsyncResetType, AsyncResetType) => Nil
+    case (AsyncResetNType, AsyncResetNType) => Nil
     case (FixedType(w1, p1), FixedType(w2, p2)) => Seq(WGeq(w1,w2), WGeq(p1,p2))
     case (AnalogType(w1), AnalogType(w2)) => Seq(WGeq(w1,w2), WGeq(w2,w1))
     case (t1: BundleType, t2: BundleType) =>
@@ -311,7 +312,7 @@ class InferWidths extends Transform with ResolvedAnnotationPaths {
             }
           })
         case (s: DefRegister) =>
-          if (s.reset.tpe != AsyncResetType ) {
+          if (s.reset.tpe != AsyncResetType && s.reset.tpe != AsyncResetNType) {
             v ++= (
                get_constraints_t(s.reset.tpe, UIntType(IntWidth(1))) ++
                get_constraints_t(UIntType(IntWidth(1)), s.reset.tpe))

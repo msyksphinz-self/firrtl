@@ -334,14 +334,15 @@ object CheckTypes extends Pass {
   class IllegalAttachExp(info: Info, mname: String, expName: String) extends PassException(
     s"$info: [module $mname]  Attach expression must be an port, wire, or port of instance: $expName.")
   class IllegalResetType(info: Info, mname: String, exp: String) extends PassException(
-    s"$info: [module $mname]  Register resets must have type Reset, AsyncReset, or UInt<1>: $exp.")
+    s"$info: [module $mname]  Register resets must have type Reset, AsyncReset, AsyncResetN, or UInt<1>: $exp.")
   class IllegalUnknownType(info: Info, mname: String, exp: String) extends PassException(
     s"$info: [module $mname]  Uninferred type: $exp."
   )
 
   def legalResetType(tpe: Type): Boolean = tpe match {
     case UIntType(IntWidth(w)) if w == 1 => true
-    case AsyncResetType => true
+    case AsyncResetType  => true
+    case AsyncResetNType => true
     case ResetType => true
     case UIntType(UnknownWidth) =>
       // cannot catch here, though width may ultimately be wrong
@@ -357,6 +358,7 @@ object CheckTypes extends Pass {
       case (_: FixedType, _: FixedType) => flip1 == flip2
       case (_: AnalogType, _: AnalogType) => true
       case (AsyncResetType, AsyncResetType) => flip1 == flip2
+      case (AsyncResetNType, AsyncResetNType) => flip1 == flip2
       case (ResetType, tpe) => legalResetType(tpe) && flip1 == flip2
       case (tpe, ResetType) => legalResetType(tpe) && flip1 == flip2
       case (t1: BundleType, t2: BundleType) =>
@@ -402,6 +404,7 @@ object CheckTypes extends Pass {
             case ClockType      => (isUInt, isSInt, true,    isFix, isAsync)
             case f: FixedType   => (isUInt, isSInt, isClock, true,  isAsync)
             case AsyncResetType => (isUInt, isSInt, isClock, isFix, true)
+            case AsyncResetNType=> (isUInt, isSInt, isClock, isFix, true)
             case UnknownType    =>
               errors.append(new IllegalUnknownType(info, mname, e.serialize))
               (isUInt, isSInt, isClock, isFix, isAsync)

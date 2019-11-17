@@ -46,12 +46,13 @@ dir
   | 'output'
   ;
 
-type 
+type
   : 'UInt' ('<' intLit '>')?
   | 'SInt' ('<' intLit '>')?
   | 'Fixed' ('<' intLit '>')? ('<' '<' intLit '>' '>')?
   | 'Clock'
   | 'AsyncReset'
+  | 'AsyncResetN'
   | 'Reset'
   | 'Analog' ('<' intLit '>')?
   | '{' field* '}'        // Bundle
@@ -251,6 +252,7 @@ primop
   | 'pad('
   | 'asUInt('
   | 'asAsyncReset('
+  | 'asAsyncResetN('
   | 'asSInt('
   | 'asClock('
   | 'shl('

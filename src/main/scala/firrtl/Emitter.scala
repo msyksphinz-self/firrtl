@@ -216,7 +216,7 @@ class VerilogEmitter extends SeqTransform with Emitter {
     case (_: UIntType | _: SIntType | _: AnalogType) =>
       val wx = bitWidth(tpe) - 1
       if (wx > 0) s"[$wx:0]" else ""
-    case ClockType | AsyncResetType => ""
+    case ClockType | AsyncResetType | AsyncResetNType => ""
     case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
   }
   def emit(x: Any)(implicit w: Writer): Unit = { emit(x, 0) }
