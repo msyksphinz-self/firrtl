@@ -26,13 +26,9 @@ object ResolveKinds extends Pass {
     s map find_stmt(kinds)
   }
 
-  def resolve_expr(kinds: KindMap)(e: Expression): Expression = {
-    println(s"resolve_expr e = ${e}")
-    e match {
-      case ex: WRef => ex copy (kind = kinds(ex.name))
-      // case ex: WSubAccess => ex copy (kind = kinds(ex.name))
-      case _ => e map resolve_expr(kinds)
-    }
+  def resolve_expr(kinds: KindMap)(e: Expression): Expression = e match {
+    case ex: WRef => ex copy (kind = kinds(ex.name))
+    case _ => e map resolve_expr(kinds)
   }
 
   def resolve_stmt(kinds: KindMap)(s: Statement): Statement =
