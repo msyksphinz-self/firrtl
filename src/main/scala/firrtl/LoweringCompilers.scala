@@ -62,7 +62,6 @@ class HighFirrtlToMiddleFirrtl extends CoreTransform {
     passes.PullMuxes,
     passes.ReplaceAccesses,
     passes.ExpandConnects,
-    passes.RemoveAccesses,
     passes.Uniquify,
     passes.ExpandWhens,
     passes.CheckInitialization,
@@ -114,8 +113,7 @@ class LowFirrtlOptimization extends CoreTransform {
     new firrtl.transforms.ConstantPropagation,
     passes.SplitExpressions,
     new firrtl.transforms.CombineCats,
-    passes.CommonSubexpressionElimination,
-    new firrtl.transforms.DeadCodeElimination)
+    passes.CommonSubexpressionElimination)
 }
 /** Runs runs only the optimization passes needed for Verilog emission */
 class MinimumLowFirrtlOptimization extends CoreTransform {

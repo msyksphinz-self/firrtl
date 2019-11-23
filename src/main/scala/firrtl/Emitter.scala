@@ -219,6 +219,17 @@ class VerilogEmitter extends SeqTransform with Emitter {
     case ClockType | AsyncResetType | AsyncResetNType => ""
     case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
   }
+  def stringify(tpe: VectorType): String = {
+    val ground_type = tpe.tpe
+    val elem_type = ground_type match {
+      case (_: UIntType | _: SIntType | _: AnalogType) =>
+        val wx = bitWidth(tpe) - 1
+        if (wx > 0) s"[$wx:0]" else ""
+      case ClockType | AsyncResetType | AsyncResetNType => ""
+      case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
+    }
+    elem_type + s"[${tpe.size}]"
+  }
   def emit(x: Any)(implicit w: Writer): Unit = { emit(x, 0) }
   def emit(x: Any, top: Int)(implicit w: Writer): Unit = {
     def cast(e: Expression): Any = e.tpe match {
@@ -960,7 +971,6 @@ class VerilogEmitter extends SeqTransform with Emitter {
     new BlackBoxSourceHelper,
     new ReplaceTruncatingArithmetic,
     new FlattenRegUpdate,
-    new DeadCodeElimination,
     passes.VerilogModulusCleanup,
     new VerilogRename,
     passes.VerilogPrep,

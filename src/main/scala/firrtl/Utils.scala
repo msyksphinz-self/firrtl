@@ -241,7 +241,7 @@ object Utils extends LazyLogging {
       case (_: GroundType) => Seq(ex)
       case t: BundleType =>
         t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe,times(flow(ex), f.flip))))
-      case t: VectorType => (0 until t.size).flatMap(i => create_exps(WSubIndex(ex, i, t.tpe,flow(ex))))
+      case t: VectorType => Seq(ex)
     }
   }
 

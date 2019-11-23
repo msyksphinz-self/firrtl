@@ -266,6 +266,7 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
       // Turn types into strings, all ports must be GroundTypes
       val tpes = m.ports map {
         case Port(_, _, _, tpe: GroundType) => stringify(tpe)
+        case Port(_, _, _, tpe: VectorType) => stringify(tpe)
         case port: Port => error(s"Trying to emit non-GroundType Port $port")
       }
 

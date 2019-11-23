@@ -36,6 +36,8 @@ object LowerTypes extends Transform {
     case e: WRef => e.name
     case e: WSubField => s"${loweredName(e.expr)}$delim${e.name}"
     case e: WSubIndex => s"${loweredName(e.expr)}$delim${e.value}"
+    // case e: WSubAccess => s"${loweredName(e.expr)}[${loweredName(e.index)}]"
+    case e: WSubAccess => s"${loweredName(e.expr)}"
   }
   def loweredName(s: Seq[String]): String = s mkString delim
   def renameExps(renames: RenameMap, n: String, t: Type, root: String): Seq[String] =
@@ -52,11 +54,10 @@ object LowerTypes extends Transform {
       renames.rename(root + e.serialize, subNames)
       subNames
     }
-    case (t: VectorType) => (0 until t.size).flatMap { i =>
-      val subNames = renameExps(renames, WSubIndex(e, i, t.tpe,flow(e)), root)
-      renames.rename(root + e.serialize, subNames)
-      subNames
-    }
+    case (t: VectorType) =>
+      // val name = root + loweredName(e) + '[' + loweredName(t.index) + ']'
+      val name = root + loweredName(e)
+      Seq(name)
   }
 
   private def renameMemExps(renames: RenameMap, e: Expression, portAndField: Expression): Seq[String] = e.tpe match {
@@ -139,6 +140,7 @@ object LowerTypes extends Transform {
   def lowerTypesExp(memDataTypeMap: MemDataTypeMap,
       info: Info, mname: String)(e: Expression): Expression = e match {
     case e: WRef => e
+    case e: WSubAccess => e map lowerTypesExp(memDataTypeMap, info, mname)
     case (_: WSubField | _: WSubIndex) => kind(e) match {
       case InstanceKind =>
         val (root, tail) = splitRef(e)
