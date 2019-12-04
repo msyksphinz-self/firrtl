@@ -36,8 +36,7 @@ object LowerTypes extends Transform {
     case e: WRef => e.name
     case e: WSubField => s"${loweredName(e.expr)}$delim${e.name}"
     case e: WSubIndex => s"${loweredName(e.expr)}$delim${e.value}"
-    // case e: WSubAccess => s"${loweredName(e.expr)}[${loweredName(e.index)}]"
-    case e: WSubAccess => s"${loweredName(e.expr)}"
+    case e: WSubAccess => s"${loweredName(e.expr)}[${loweredName(e.index)}]"
   }
   def loweredName(s: Seq[String]): String = s mkString delim
   def renameExps(renames: RenameMap, n: String, t: Type, root: String): Seq[String] =
@@ -98,6 +97,42 @@ object LowerTypes extends Transform {
         (mem, port, field, Some(tail3))
     }
   }
+
+  def create_exps(n: String, t: Type): Seq[Expression] =
+    create_exps(WRef(n, t, ExpKind, UnknownFlow))
+  def create_exps(e: Expression): Seq[Expression] = e match {
+    case ex: Mux =>
+      val e1s = create_exps(ex.tval)
+      val e2s = create_exps(ex.fval)
+      e1s zip e2s map {case (e1, e2) =>
+        Mux(ex.cond, e1, e2, mux_type_and_widths(e1, e2))
+      }
+    case ex: ValidIf => create_exps(ex.value) map (e1 => ValidIf(ex.cond, e1, e1.tpe))
+    case ex: WRef => {
+      ex.tpe match {
+        case (_: GroundType) => Seq(ex)
+        case t: BundleType => {
+          val ret = t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe, times(flow(ex), f.flip))))
+          ret
+        }
+        case t: VectorType => {
+          val wref = WRef(ex.name, t.tpe, ExpKind, flow(ex))
+          val elem_exp = create_exps(WRef(ex.name, t.tpe, ExpKind, flow(ex)))
+          elem_exp.map(e => WRef(loweredName(e) , VectorType(e.tpe, t.size), ExpKind, flow(e)))
+        }
+      }
+    }
+    case ex => ex.tpe match {
+      case (_: GroundType) => Seq(ex)
+      case t: BundleType => {
+        t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe,times(flow(ex), f.flip))))
+      }
+      case t: VectorType => {
+        (0 until t.size).flatMap(i => create_exps(WSubIndex(ex, i, t.tpe,flow(ex))))
+      }
+    }
+  }
+
 
   // Lowers an expression of MemKind
   // Since mems with Bundle type must be split into multiple ground type
@@ -253,7 +288,10 @@ object LowerTypes extends Transform {
           val exp = lowerTypesExp(memDataTypeMap, info, mname)(sx.expr)
           val locs = lowerTypesMemExp(memDataTypeMap, info, mname)(sx.loc)
           Block(locs map (Connect(info, _, exp)))
-        case _ => sx map lowerTypesExp(memDataTypeMap, info, mname)
+        case _ => {
+          println(s"lowerTypesStmt() Connect = ${sx}")
+          sx map lowerTypesExp(memDataTypeMap, info, mname)
+        }
       }
       case sx => sx map lowerTypesExp(memDataTypeMap, info, mname)
     }
