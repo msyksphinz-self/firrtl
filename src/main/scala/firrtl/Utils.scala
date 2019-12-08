@@ -60,6 +60,17 @@ object bitWidth {
   }
 }
 
+
+object sv_bitWidth {
+  def apply(dt: Type): BigInt = widthOf(dt)
+  private def widthOf(dt: Type): BigInt = dt match {
+    case t: VectorType => t.size
+    case t: BundleType => t.fields.map(f => bitWidth(f.tpe)).foldLeft(BigInt(0))(_+_)
+    case GroundType(IntWidth(width)) => width
+    case t => Utils.error(s"Unknown type encountered in bitWidth: $dt")
+  }
+}
+
 object castRhs {
   def apply(lhst: Type, rhs: Expression) = {
     (lhst, rhs.tpe) match {

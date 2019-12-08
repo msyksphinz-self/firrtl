@@ -24,23 +24,28 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
 
   override def stringify(tpe: VectorType): String = {
     val ground_type = tpe.tpe
+    println(s"ground_type = ${ground_type}")
     val elem_type = ground_type match {
       case (t: VectorType) => {
-        val wx = bitWidth(tpe) - 1
-        val field_str = if (wx > 0) s"[$wx:0]" else ""
+        val wx = sv_bitWidth(tpe) - 1
+        val field_str = if (wx > 0) s"[$wx]" else ""
         val str_element = tpe.tpe match {
           case tpe_elem: VectorType => stringify(tpe_elem)
           case tpe_elem: GroundType => stringify(tpe_elem)
         }
         str_element + field_str
       }
-      case (_: UIntType | _: SIntType | _: AnalogType) =>
-        val wx = bitWidth(tpe) - 1
-        if (wx > 0) s"[$wx:0]" else ""
+      case (_: UIntType | _: SIntType | _: AnalogType) => {
+        val wx = sv_bitWidth(tpe) - 1
+        val elem_w = sv_bitWidth(ground_type) - 1
+        val elem_str = if (elem_w > 0) s"[${elem_w}:0]" else ""
+        val vec_str = if (wx > 0) s"[$wx]" else ""
+        elem_str + vec_str
+      }
       case ClockType | AsyncResetType | AsyncResetNType => ""
       case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
     }
-    elem_type + s"[${tpe.size}]"
+    elem_type
   }
 
   class SystemVerilogRender(description: Description,
