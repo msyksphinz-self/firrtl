@@ -22,6 +22,27 @@ import scala.collection.mutable.ArrayBuffer
 
 class SystemVerilogEmitter extends VerilogEmitter with Emitter {
 
+  override def stringify(tpe: VectorType): String = {
+    val ground_type = tpe.tpe
+    val elem_type = ground_type match {
+      case (t: VectorType) => {
+        val wx = bitWidth(tpe) - 1
+        val field_str = if (wx > 0) s"[$wx:0]" else ""
+        val str_element = tpe.tpe match {
+          case tpe_elem: VectorType => stringify(tpe_elem)
+          case tpe_elem: GroundType => stringify(tpe_elem)
+        }
+        str_element + field_str
+      }
+      case (_: UIntType | _: SIntType | _: AnalogType) =>
+        val wx = bitWidth(tpe) - 1
+        if (wx > 0) s"[$wx:0]" else ""
+      case ClockType | AsyncResetType | AsyncResetNType => ""
+      case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
+    }
+    elem_type + s"[${tpe.size}]"
+  }
+
   class SystemVerilogRender(description: Description,
                       portDescriptions: Map[String, Description],
                       m: Module,
