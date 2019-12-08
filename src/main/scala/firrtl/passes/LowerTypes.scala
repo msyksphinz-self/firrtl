@@ -184,12 +184,10 @@ object LowerTypes extends Transform {
 
   def lowerTypesExp(memDataTypeMap: MemDataTypeMap,
     info: Info, mname: String)(e: Expression): Expression = {
-    println(s"lowerTypesExp() = ${e}")
     e match {
       case e: WRef => e
       case e: WSubAccess => e map lowerTypesExp(memDataTypeMap, info, mname)
       case e: WSubField => {
-        println(s"In WSubField : kind(e) => ${kind(e)}")
         kind(e) match {
           case InstanceKind =>
             val (root, tail) = splitRef(e)
@@ -204,8 +202,6 @@ object LowerTypes extends Transform {
             }
           case _ => {
             val exps = lowerTypesExp(memDataTypeMap, info, mname)(e.expr)
-            // WSubField(exps, e.name, e.tpe, flow(e))
-            // WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
             exps match {
               case ex: WSubAccess => WSubAccess(WRef(loweredName(ex.expr) + delim + e.name, e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
               case _ => WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
@@ -213,22 +209,19 @@ object LowerTypes extends Transform {
           }
         }
       }
-      case (_: WSubIndex) => {
-        println(s"In WSubIndex : kind(e) => ${kind(e)}")
-        kind(e) match {
-          case InstanceKind =>
-            val (root, tail) = splitRef(e)
-            val name = loweredTypeName(tail)
-            WSubField(root, name, e.tpe, flow(e))
-          case MemKind =>
-            val exps = lowerTypesMemExp(memDataTypeMap, info, mname)(e)
-            exps.size match {
-              case 1 => exps.head
-              case _ => error("Error! lowerTypesExp called on MemKind " +
-                  "SubField that needs to be expanded!")(info, mname)
-            }
-          case _ => WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
-        }
+      case (_: WSubIndex) => kind(e) match {
+        case InstanceKind =>
+          val (root, tail) = splitRef(e)
+          val name = loweredTypeName(tail)
+          WSubField(root, name, e.tpe, flow(e))
+        case MemKind =>
+          val exps = lowerTypesMemExp(memDataTypeMap, info, mname)(e)
+          exps.size match {
+            case 1 => exps.head
+            case _ => error("Error! lowerTypesExp called on MemKind " +
+                "SubField that needs to be expanded!")(info, mname)
+          }
+        case _ => WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
       }
       case e: Mux => e map lowerTypesExp(memDataTypeMap, info, mname)
       case e: ValidIf => e map lowerTypesExp(memDataTypeMap, info, mname)
