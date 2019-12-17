@@ -35,8 +35,19 @@ object LowerTypes extends Transform {
       else              { e.name + "_" + substr }
     }
     case e: WSubField => s"${loweredTypeName(e.expr, substr + e.name)}"
-    case e: WSubIndex => s"${loweredTypeName(e.expr, substr)}$delim${e.value}"
+    case e: WSubIndex => s"${loweredTypeName(e.expr, substr)}[${e.value}]"
     case e: WSubAccess => s"${loweredTypeName(e.expr)}_${substr}[${loweredTypeName(e.index)}]"
+  }
+
+  def loweredExpName(e: Expression): String = loweredExpName(e, "")
+  def loweredExpName(e: Expression, substr: String): String = e match {
+    case e: WRef => {
+      if (substr == "") { e.name }
+      else              { e.name + "_" + substr }
+    }
+    case e: WSubField => s"${loweredExpName(e.expr, substr + e.name)}"
+    case e: WSubIndex => s"${loweredExpName(e.expr, substr)}"
+    case e: WSubAccess => s"${loweredExpName(e.expr)}_${substr}[${loweredExpName(e.index)}]"
   }
   /** Expands a chain of referential [[firrtl.ir.Expression]]s into the equivalent lowered name
     * @param e [[firrtl.ir.Expression]] made up of _only_ [[firrtl.WRef]], [[firrtl.WSubField]], and [[firrtl.WSubIndex]]
@@ -45,7 +56,7 @@ object LowerTypes extends Transform {
   def loweredName(e: Expression): String = e match {
     case e: WRef => e.name
     case e: WSubField => s"${loweredName(e.expr)}$delim${e.name}"
-    case e: WSubIndex => s"${loweredName(e.expr)}$delim${e.value}"
+    case e: WSubIndex => s"${loweredName(e.expr)}"
     case e: WSubAccess => s"${loweredName(e.expr)}[${loweredName(e.index)}]"
   }
   def loweredName(s: Seq[String]): String = s mkString delim
@@ -122,11 +133,14 @@ object LowerTypes extends Transform {
       ex.tpe match {
         case (_: GroundType) => Seq(ex)
         case t: BundleType => {
-          val ret = t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe, times(flow(ex), f.flip))))
+          // val ret = t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe, times(flow(ex), f.flip))))
+          val ret = t.fields.flatMap(f => {
+            println(s"t: BundleType : ${ex.name} _ ${f}")
+            create_exps(WRef(loweredExpName(ex, f.name), f.tpe, ExpKind, flow(ex)))
+          })
           ret
         }
         case t: VectorType => {
-          val wref = WRef(ex.name, t.tpe, ExpKind, flow(ex))
           val elem_exp = create_exps(WRef(ex.name, t.tpe, ExpKind, flow(ex)))
           elem_exp.map(e => WRef(loweredTypeName(e) , VectorType(e.tpe, t.size), ExpKind, flow(e)))
         }
@@ -134,12 +148,8 @@ object LowerTypes extends Transform {
     }
     case ex => ex.tpe match {
       case (_: GroundType) => Seq(ex)
-      case t: BundleType => {
-        t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe,times(flow(ex), f.flip))))
-      }
-      case t: VectorType => {
-        (0 until t.size).flatMap(i => create_exps(WSubIndex(ex, i, t.tpe,flow(ex))))
-      }
+      case t: BundleType => t.fields.flatMap(f => create_exps(WSubField(ex, f.name, f.tpe, times(flow(ex), f.flip))))
+      case t: VectorType => create_exps(WSubIndex(ex, t.size, t.tpe,flow(ex)))
     }
   }
 
@@ -204,12 +214,13 @@ object LowerTypes extends Transform {
             val exps = lowerTypesExp(memDataTypeMap, info, mname)(e.expr)
             exps match {
               case ex: WSubAccess => WSubAccess(WRef(loweredName(ex.expr) + delim + e.name, e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
+              case ex: WSubIndex  => WSubIndex(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex))
               case _ => WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
             }
           }
         }
       }
-      case (_: WSubIndex) => kind(e) match {
+      case (e: WSubIndex) => kind(e) match {
         case InstanceKind =>
           val (root, tail) = splitRef(e)
           val name = loweredTypeName(tail)
@@ -221,7 +232,7 @@ object LowerTypes extends Transform {
             case _ => error("Error! lowerTypesExp called on MemKind " +
                 "SubField that needs to be expanded!")(info, mname)
           }
-        case _ => WRef(loweredTypeName(e), e.tpe, kind(e), flow(e))
+        case _ => WSubIndex(e.expr, e.value, e.tpe, flow(e))
       }
       case e: Mux => e map lowerTypesExp(memDataTypeMap, info, mname)
       case e: ValidIf => e map lowerTypesExp(memDataTypeMap, info, mname)
