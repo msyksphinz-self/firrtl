@@ -201,6 +201,14 @@ object LowerTypes extends Transform {
     info: Info, mname: String, subfield_name: String = "")(e: Expression): Expression = {
     e match {
       case e: WRef => e.copy(name = subfield_name)
+      case e: WSubAccess => {
+        val exps = lowerTypesExp(memDataTypeMap, info, mname, subfield_name)(e.expr)
+        exps match {
+          case ex: WSubAccess => WSubAccess(WSubAccess(WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex)), e.index, e.tpe, flow(e))
+          case ex: WSubIndex  => WSubAccess(WSubIndex (WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex)), e.index, e.tpe, flow(e))
+          case _              => WSubAccess(exps, e.index, e.tpe, flow(e))
+        }
+      }
       case e: WSubAccess => e map lowerTypesExp(memDataTypeMap, info, mname)
       case e: WSubField => {
         kind(e) match {
@@ -222,7 +230,8 @@ object LowerTypes extends Transform {
             }
             val exps = lowerTypesExp(memDataTypeMap, info, mname, new_subfield_name)(e.expr)
             exps match {
-              case ex: WSubAccess => WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
+              // case ex: WSubAccess => WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
+              case ex: WSubAccess => ex
               case ex: WSubIndex  => ex
               case _ => WRef(loweredExpName(e), exps.tpe, kind(exps), flow(exps))
             }
@@ -244,8 +253,9 @@ object LowerTypes extends Transform {
         case _ => {
           val exps = lowerTypesExp(memDataTypeMap, info, mname, subfield_name)(e.expr)
           exps match {
-            case ex: WSubAccess => WSubIndex(WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
-            case ex: WSubIndex  => WSubIndex(WSubIndex(WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
+            // case ex: WSubAccess => WSubIndex(WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
+            case ex: WSubAccess => WSubIndex(WSubAccess(WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
+            case ex: WSubIndex  => WSubIndex(WSubIndex (WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
             case _              => WSubIndex(exps, e.value, e.tpe, flow(e))
           }
         }
