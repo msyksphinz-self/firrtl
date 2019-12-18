@@ -38,8 +38,8 @@ object LowerTypes extends Transform {
       if (substr == "") { s"${loweredExpName(e.expr, e.name)}" }
       else              { s"${loweredExpName(e.expr, e.name + "_" + substr) }" }
     }
-    case e: WSubIndex => s"${loweredExpName(e.expr, substr)}"
-    case e: WSubAccess => s"${loweredExpName(e.expr)}_${substr}[${loweredExpName(e.index)}]"
+    case e: WSubIndex  => s"${loweredExpName(e.expr, substr)}"
+    case e: WSubAccess => s"${loweredExpName(e.expr, substr)}"
   }
 
   def loweredTypeName(e: Expression): String = loweredTypeName(e, "")
@@ -198,9 +198,9 @@ object LowerTypes extends Transform {
   }
 
   def lowerTypesExp(memDataTypeMap: MemDataTypeMap,
-    info: Info, mname: String)(e: Expression): Expression = {
+    info: Info, mname: String, subfield_name: String = "")(e: Expression): Expression = {
     e match {
-      case e: WRef => e
+      case e: WRef => e.copy(name = subfield_name)
       case e: WSubAccess => e map lowerTypesExp(memDataTypeMap, info, mname)
       case e: WSubField => {
         kind(e) match {
@@ -216,14 +216,15 @@ object LowerTypes extends Transform {
                   "SubField that needs to be expanded!")(info, mname)
             }
           case _ => {
-            val exps = lowerTypesExp(memDataTypeMap, info, mname)(e.expr)
+            val new_subfield_name = subfield_name match {
+              case "" => e.name
+              case x => e.name + x
+            }
+            val exps = lowerTypesExp(memDataTypeMap, info, mname, new_subfield_name)(e.expr)
             exps match {
               case ex: WSubAccess => WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
-              case ex: WSubIndex  => {
-                println(s"WSubField::SubIndex ex.value = ${ex.value}, Type = ${ex.tpe}")
-                WSubIndex(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex))
-              }
-              case _ => WRef(loweredExpName(e), e.tpe, kind(e), flow(e))
+              case ex: WSubIndex  => ex
+              case _ => WRef(loweredExpName(e), exps.tpe, kind(exps), flow(exps))
             }
           }
         }
@@ -241,15 +242,11 @@ object LowerTypes extends Transform {
                 "SubField that needs to be expanded!")(info, mname)
           }
         case _ => {
-          val exps = lowerTypesExp(memDataTypeMap, info, mname)(e.expr)
+          val exps = lowerTypesExp(memDataTypeMap, info, mname, subfield_name)(e.expr)
           exps match {
-            case ex: WSubAccess => WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex))
-            case ex: WSubIndex  => {
-            // println(s"WSubIndex::SubIndex ex.value = ${e.value}, Type = ${e.tpe}")
-            // WSubIndex(e.expr, e.value, e.tpe, flow(e))
-              WSubIndex(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex))
-            }
-            case _ => WRef(loweredExpName(e), e.tpe, kind(e), flow(e))
+            case ex: WSubAccess => WSubIndex(WSubAccess(WRef(loweredExpName(e), e.tpe, kind(e), flow(e)), ex.index, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
+            case ex: WSubIndex  => WSubIndex(WSubIndex(WRef(loweredExpName(e) + "_" + subfield_name, e.tpe, kind(e), flow(e)), ex.value, ex.tpe, flow(ex)), e.value, e.tpe, flow(e))
+            case _              => WSubIndex(exps, e.value, e.tpe, flow(e))
           }
         }
       }
