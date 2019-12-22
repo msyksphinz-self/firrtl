@@ -23,30 +23,47 @@ import scala.collection.mutable.ArrayBuffer
 class SystemVerilogEmitter extends VerilogEmitter with Emitter {
 
   override def stringify(tpe: VectorType): String = {
-    val ground_type = tpe.tpe
-    println(s"ground_type = ${ground_type}")
-    val elem_type = ground_type match {
+    val elem_type = tpe.tpe match {
       case (t: VectorType) => {
-        val wx = sv_bitWidth(tpe) - 1
-        val field_str = if (wx > 0) s"[$wx]" else ""
+        val wx = sv_bitWidth(tpe)
         val str_element = tpe.tpe match {
           case tpe_elem: VectorType => stringify(tpe_elem)
           case tpe_elem: GroundType => stringify(tpe_elem)
         }
-        str_element + field_str
+        str_element//  + field_str
       }
       case (_: UIntType | _: SIntType | _: AnalogType) => {
-        val wx = sv_bitWidth(tpe) - 1
-        val elem_w = sv_bitWidth(ground_type) - 1
+        val elem_w = sv_bitWidth(tpe.tpe) - 1
         val elem_str = if (elem_w > 0) s"[${elem_w}:0]" else ""
-        val vec_str = if (wx > 0) s"[$wx]" else ""
-        elem_str + vec_str
+        elem_str // + vec_str
       }
       case ClockType | AsyncResetType | AsyncResetNType => ""
       case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
     }
     elem_type
   }
+
+  def stringify_vec(tpe: VectorType): String = {
+    val elem_type = tpe.tpe match {
+      case (t: VectorType) => {
+        val wx = sv_bitWidth(tpe)
+        val field_str = if (wx > 0) s"[$wx]" else ""
+        val str_element = tpe.tpe match {
+          case tpe_elem: VectorType => stringify_vec(tpe_elem)
+        }
+        str_element + field_str
+      }
+      case (_: UIntType | _: SIntType | _: AnalogType) => {
+        val wx = sv_bitWidth(tpe)
+        val vec_str = if (wx > 0) s"[$wx]" else ""
+        vec_str
+      }
+      case ClockType | AsyncResetType | AsyncResetNType => ""
+      case _ => throwInternalError(s"trying to write unsupported type in the Verilog Emitter: $tpe")
+    }
+    elem_type
+  }
+
 
   class SystemVerilogRender(description: Description,
                       portDescriptions: Map[String, Description],
@@ -296,9 +313,20 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
         case port: Port => error(s"Trying to emit non-GroundType Port $port")
       }
 
+      // Turn types into strings, all ports must be GroundTypes
+      val tpes_vec = m.ports map {
+        // case Port(_, _, _, tpe: GroundType) => stringify_vec(tpe)
+        case Port(_, _, _, tpe: GroundType) => ""
+        case Port(_, _, _, tpe: VectorType) => stringify_vec(tpe)
+        case port: Port => error(s"Trying to emit non-GroundType Port $port")
+      }
+
       // dirs are already padded
-      (dirs, padToMax(tpes), m.ports).zipped.toSeq.zipWithIndex.foreach {
-        case ((dir, tpe, Port(info, name, _, _)), i) =>
+      val pad_to_port    = padToMax(tpes)
+      val pad_to_portvec = padToMax(tpes_vec)
+      val pad_vec = pad_to_port.zip(pad_to_portvec)
+      (dirs, pad_vec, m.ports).zipped.toSeq.zipWithIndex.foreach {
+        case ((dir, (tpe, tpe_vec), Port(info, name, _, _)), i) =>
           portDescriptions.get(name) match {
             case Some(DocString(s)) =>
               portdefs += Seq("")
@@ -307,9 +335,9 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
           }
 
           if (i != m.ports.size - 1) {
-            portdefs += Seq(dir, " ", tpe, " ", name, ",", info)
+            portdefs += Seq(dir, " ", tpe, " ", name, " ", tpe_vec, ",", info)
           } else {
-            portdefs += Seq(dir, " ", tpe, " ", name, info)
+            portdefs += Seq(dir, " ", tpe, " ", name, " ", tpe_vec, info)
           }
       }
     }
