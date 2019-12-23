@@ -137,8 +137,8 @@ object ExpandConnects extends Pass {
                case _ => Block(invalids)
             }
           case sx: Connect =>
-            val locs = create_exps(sx.loc)
-            val exps = create_exps(sx.expr)
+            val locs = create_exps_connect(sx.loc)
+            val exps = create_exps_connect(sx.expr)
             Block(locs.zip(exps).map { case (locx, expx) =>
                to_flip(flow(locx)) match {
                   case Default => Connect(sx.info, locx, expx)

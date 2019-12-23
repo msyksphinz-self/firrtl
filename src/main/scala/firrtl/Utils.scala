@@ -255,6 +255,21 @@ object Utils extends LazyLogging {
       case t: VectorType => Seq(ex)
     }
   }
+  def create_exps_connect(e: Expression): Seq[Expression] = e match {
+    case ex: Mux =>
+      val e1s = create_exps_connect(ex.tval)
+      val e2s = create_exps_connect(ex.fval)
+      e1s zip e2s map {case (e1, e2) =>
+        Mux(ex.cond, e1, e2, mux_type_and_widths(e1, e2))
+      }
+    case ex: ValidIf => create_exps_connect(ex.value) map (e1 => ValidIf(ex.cond, e1, e1.tpe))
+    case ex => ex.tpe match {
+      case (_: GroundType) => Seq(ex)
+      case t: BundleType =>
+        t.fields.flatMap(f => create_exps_connect(WSubField(ex, f.name, f.tpe,times(flow(ex), f.flip))))
+      case t: VectorType => (0 until t.size).flatMap(i => create_exps_connect(WSubIndex(ex, i, t.tpe,flow(ex))))
+    }
+  }
 
   /** Like create_exps, but returns intermediate Expressions as well
     * @param e
