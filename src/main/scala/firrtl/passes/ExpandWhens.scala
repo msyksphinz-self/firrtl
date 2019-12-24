@@ -219,11 +219,22 @@ object ExpandWhens extends Pass {
     (netlist, simlist, attaches, bodyx, infoMap)
   }
 
+  def create_exps_port(n: String, t: Type, g: Flow): Seq[Expression] = {
+    val base_wref = WRef(n, t, ExpKind, g)
+    val base_exp = create_exps(base_wref)
+    t match {
+      case (_: GroundType) => base_exp
+      case t: BundleType =>
+        t.fields.flatMap(f => create_exps_connect(WSubField(base_wref, f.name, f.tpe, times(g, f.flip))))
+      case t: VectorType => (0 until t.size).flatMap(i => create_exps_connect(WSubIndex(base_wref, i, t.tpe, g)))
+    }
+  }
 
   /** Returns all references to all Female leaf subcomponents of a reference */
   private def getFemaleRefs(n: String, t: Type, g: Flow): Seq[Expression] = {
-    val exps = create_exps(WRef(n, t, ExpKind, g))
-    exps.flatMap { case exp =>
+    // val exps = create_exps(WRef(n, t, ExpKind, g))
+    val exps = create_exps_port(n, t, g)
+    val ret = exps.flatMap { case exp =>
       exp.tpe match {
         case AnalogType(w) => None
         case _ => flow(exp) match {
@@ -232,6 +243,8 @@ object ExpandWhens extends Pass {
         }
       }
     }
+    println(s"getFemaleRefs = ${ret}")
+    ret
   }
 
   /** Returns all connections/invalidations in the circuit
