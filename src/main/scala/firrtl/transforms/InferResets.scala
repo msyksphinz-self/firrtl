@@ -124,15 +124,15 @@ class InferResets extends Transform {
           //  - Each connect duplicates a bunch of code from ExpandConnects, could be cleaner
           //  - The full create_exps duplication is inefficient, there has to be a better way
           case Connect(_, lhs, rhs) =>
-            val locs = Utils.create_exps(lhs)
-            val exps = Utils.create_exps(rhs)
+            val locs = Utils.create_exps_connect(lhs)
+            val exps = Utils.create_exps_connect(rhs)
             for ((loc, exp) <- locs.zip(exps)) {
               markResetDriver(loc, exp)
             }
           case PartialConnect(_, lhs, rhs) =>
             val points = Utils.get_valid_points(lhs.tpe, rhs.tpe, Default, Default)
-            val locs = Utils.create_exps(lhs)
-            val exps = Utils.create_exps(rhs)
+            val locs = Utils.create_exps_connect(lhs)
+            val exps = Utils.create_exps_connect(rhs)
             for ((i, j) <- points) {
               markResetDriver(locs(i), exps(j))
             }

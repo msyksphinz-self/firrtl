@@ -147,8 +147,8 @@ object ExpandConnects extends Pass {
             })
           case sx: PartialConnect =>
             val ls = get_valid_points(sx.loc.tpe, sx.expr.tpe, Default, Default)
-            val locs = create_exps(sx.loc)
-            val exps = create_exps(sx.expr)
+            val locs = create_exps_connect(sx.loc)
+            val exps = create_exps_connect(sx.expr)
             val stmts = ls map { case (x, y) =>
               locs(x).tpe match {
                 case AnalogType(_) => Attach(sx.info, Seq(locs(x), exps(y)))

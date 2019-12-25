@@ -302,8 +302,9 @@ class InferWidths extends Transform with ResolvedAnnotationPaths {
           }
         case (s: PartialConnect) =>
           val ls = get_valid_points(s.loc.tpe, s.expr.tpe, Default, Default)
-          val locs = create_exps(s.loc)
-          val exps = create_exps(s.expr)
+          val locs = create_exps_connect(s.loc)
+          val exps = create_exps_connect(s.expr)
+          println(s"locs = ${locs}, ls = ${ls}")
           v ++= (ls flatMap {case (x, y) =>
             val locx = locs(x)
             val expx = exps(y)
