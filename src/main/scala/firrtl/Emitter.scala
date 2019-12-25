@@ -311,6 +311,7 @@ class VerilogEmitter extends SeqTransform with Emitter {
      def cast_as(e: Expression): Any = e.tpe match {
        case (t: UIntType) => e
        case (t: SIntType) => Seq("$signed(",e,")")
+       case (t: VectorType) => e
        case _ => throwInternalError(s"cast_as - unrecognized type: $e")
      }
      def a0: Expression = doprim.args.head

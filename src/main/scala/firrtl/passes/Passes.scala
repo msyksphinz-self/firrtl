@@ -124,7 +124,7 @@ object ExpandConnects extends Pass {
           case sx: DefMemory => flows(sx.name) = SourceFlow; sx
           case sx: DefNode => flows(sx.name) = SourceFlow; sx
           case sx: IsInvalid =>
-            val invalids = create_exps(sx.expr).flatMap { case expx =>
+            val invalids = create_exps_connect(sx.expr).flatMap { case expx =>
                flow(set_flow(expx)) match {
                   case DuplexFlow => Some(IsInvalid(sx.info, expx))
                   case SinkFlow => Some(IsInvalid(sx.info, expx))

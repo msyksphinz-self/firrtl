@@ -109,12 +109,15 @@ object ExpandWhens extends Pass {
       case stmt @ (_: DefNode | EmptyStmt) => stmt
       case w: DefWire =>
         netlist ++= (getFemaleRefs(w.name, w.tpe, DuplexFlow) map (ref => we(ref) -> WVoid))
+        // println(s"DefWire = ${w}")
         w
       case w: DefMemory =>
         netlist ++= (getFemaleRefs(w.name, MemPortUtils.memType(w), SourceFlow) map (ref => we(ref) -> WVoid))
+        println(s"DefMemory = ${netlist}")
         w
       case w: WDefInstance =>
         netlist ++= (getFemaleRefs(w.name, w.tpe, SourceFlow).map(ref => we(ref) -> WVoid))
+        // println(s"DefInstance = ${w}")
         w
       // Update netlist with self reference for each female reference
       // Return self, unchanged
@@ -123,10 +126,12 @@ object ExpandWhens extends Pass {
         r
       // For value assignments, update netlist/attaches and return EmptyStmt
       case c: Connect =>
+        println(s"Connect = ${c.loc} = ${c.expr}")
         saveInfo(c.loc.serialize, c.info)
         netlist(c.loc) = c.expr
         EmptyStmt
       case c: IsInvalid =>
+        println(s"IsInvalid = ${c.expr}")
         netlist(c.expr) = WInvalid
         EmptyStmt
       case a: Attach =>
@@ -141,6 +146,7 @@ object ExpandWhens extends Pass {
         EmptyStmt
       // Expand conditionally, see comments below
       case sx: Conditionally =>
+        // println(s"Conditionally = ${sx}")
         /* 1) Recurse into conseq and alt with empty netlist, updated defaults, updated predicate
          * 2) For each assigned reference (lvalue) in either conseq or alt, get merged value
          *   a) Find default value from defaults
@@ -157,10 +163,12 @@ object ExpandWhens extends Pass {
         //   present in the conseq and/or alt
         val memos = (conseqNetlist ++ altNetlist) map { case (lvalue, _) =>
           // Defaults in netlist get priority over those in defaults
+          println(s"lvalue = ${lvalue}")
           val default = netlist get lvalue match {
             case Some(v) => Some(v)
             case None => getDefault(lvalue, defaults)
           }
+          println(s"default = ${default}")
           val res = default match {
             case Some(defaultValue) =>
               val trueValue = conseqNetlist getOrElse (lvalue, defaultValue)
@@ -178,9 +186,18 @@ object ExpandWhens extends Pass {
 
           // Does an expression contain WVoid inserted in this pass?
           def containsVoid(e: Expression): Boolean = e match {
-            case WVoid => true
-            case ValidIf(_, value, _) => memoizedVoid(value)
-            case Mux(_, tv, fv, _) => memoizedVoid(tv) || memoizedVoid(fv)
+            case WVoid => {
+              println(s"containsVoid::WVoid")
+              true
+            }
+            case ValidIf(_, value, _) => {
+              println(s"containsVoid::ValidIf ${value}")
+              memoizedVoid(value)
+            }
+            case Mux(_, tv, fv, _) => {
+              println(s"containsVoid::Mux ${tv}, ${fv}")
+              memoizedVoid(tv) || memoizedVoid(fv)
+            }
             case _ => false
           }
 
@@ -189,6 +206,7 @@ object ExpandWhens extends Pass {
             // "Idiomatic" emission of these muxes isn't a concern because they represent bad code (latches)
             case e if containsVoid(e) =>
               netlist(lvalue) = e
+              println(s"memoizedVoid::constraint ${e}")
               memoizedVoid += e   // remember that this was void
               EmptyStmt
             case _: ValidIf | _: Mux | _: DoPrim => nodes get res match {
@@ -206,6 +224,7 @@ object ExpandWhens extends Pass {
               EmptyStmt
           }
         }
+        println(s"memos = ${memos}")
         Block(Seq(conseqStmt, altStmt) ++ memos)
       case block: Block => block map expandWhens(netlist, defaults, p)
       case _ => throwInternalError()
@@ -232,9 +251,8 @@ object ExpandWhens extends Pass {
 
   /** Returns all references to all Female leaf subcomponents of a reference */
   private def getFemaleRefs(n: String, t: Type, g: Flow): Seq[Expression] = {
-    // val exps = create_exps(WRef(n, t, ExpKind, g))
     val exps = create_exps_port(n, t, g)
-    val ret = exps.flatMap { case exp =>
+    exps.flatMap { case exp =>
       exp.tpe match {
         case AnalogType(w) => None
         case _ => flow(exp) match {
@@ -243,8 +261,6 @@ object ExpandWhens extends Pass {
         }
       }
     }
-    println(s"getFemaleRefs = ${ret}")
-    ret
   }
 
   /** Returns all connections/invalidations in the circuit

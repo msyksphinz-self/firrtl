@@ -305,7 +305,7 @@ object LowerTypes extends Transform {
           case _ =>
             // Rename ports
             val seen: mutable.Set[String] = mutable.Set[String]()
-            create_exps(sx.name, memType(sx)) foreach { e =>
+            create_exps_connect(sx.name, memType(sx)) foreach { e =>
               val (mem, port, field, tail) = splitMemRef(e)
               if (!seen.contains(field.name)) {
                 seen += field.name

@@ -403,8 +403,9 @@ class SystemVerilogEmitter extends VerilogEmitter with Emitter {
           instdeclares += Seq(");")
         case sx: DefMemory =>
           val fullSize = sx.depth * (sx.dataType match {
-                                       case GroundType(IntWidth(width)) => width
-                                     })
+            case GroundType(IntWidth(width)) => width
+            case VectorType(UIntType(IntWidth(width)), vec_width) => vec_width * width
+          })
           val decl = if (fullSize > (1 << 29)) "reg /* sparse */" else "logic"
           declareVectorType(decl, sx.name, sx.dataType, sx.depth, sx.info)
           initialize_mem(sx)

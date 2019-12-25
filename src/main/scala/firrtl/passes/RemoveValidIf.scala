@@ -22,6 +22,7 @@ object RemoveValidIf extends Pass {
     case _: SIntType => SIntZero
     case ClockType => ClockZero
     case _: FixedType => FixedZero
+    case t: VectorType => getGroundZero(t.tpe)
     case other => throwInternalError(s"Unexpected type $other")
   }
 

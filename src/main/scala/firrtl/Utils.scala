@@ -255,6 +255,8 @@ object Utils extends LazyLogging {
       case t: VectorType => Seq(ex)
     }
   }
+  def create_exps_connect(n: String, t: Type): Seq[Expression] =
+    create_exps_connect(WRef(n, t, ExpKind, UnknownFlow))
   def create_exps_connect(e: Expression): Seq[Expression] = e match {
     case ex: Mux =>
       val e1s = create_exps_connect(ex.tval)

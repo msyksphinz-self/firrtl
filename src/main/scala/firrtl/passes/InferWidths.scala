@@ -263,6 +263,7 @@ class InferWidths extends Transform with ResolvedAnnotationPaths {
         })
       }
     case (t1: UIntType, t2: VectorType) => get_constraints_t(t1, t2.tpe)
+    case (t1: VectorType, t2: UIntType) => get_constraints_t(t1.tpe, t2)
     case (t1: VectorType, t2: VectorType) => get_constraints_t(t1.tpe, t2.tpe)
     case (ResetType, _) => Nil
     case (_, ResetType) => Nil

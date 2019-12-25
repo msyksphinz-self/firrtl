@@ -265,7 +265,7 @@ object Uniquify extends Transform {
             if (nameMap.contains(sx.name)) {
               val node = nameMap(sx.name)
               val newType = uniquifyNamesType(sx.tpe, node.elts)
-              (Utils.create_exps(sx.name, sx.tpe) zip Utils.create_exps(node.name, newType)) foreach {
+              (Utils.create_exps_connect(sx.name, sx.tpe) zip Utils.create_exps_connect(node.name, newType)) foreach {
                 case (from, to) => renames.rename(from.serialize, to.serialize)
               }
               DefWire(sx.info, node.name, newType)
@@ -277,7 +277,7 @@ object Uniquify extends Transform {
             if (nameMap.contains(sx.name)) {
               val node = nameMap(sx.name)
               val newType = uniquifyNamesType(sx.tpe, node.elts)
-              (Utils.create_exps(sx.name, sx.tpe) zip Utils.create_exps(node.name, newType)) foreach {
+              (Utils.create_exps_connect(sx.name, sx.tpe) zip Utils.create_exps_connect(node.name, newType)) foreach {
                 case (from, to) => renames.rename(from.serialize, to.serialize)
               }
               DefRegister(sx.info, node.name, newType, sx.clock, sx.reset, sx.init)
@@ -289,7 +289,7 @@ object Uniquify extends Transform {
             if (nameMap.contains(sx.name)) {
               val node = nameMap(sx.name)
               val newType = portTypeMap(m.name)
-              (Utils.create_exps(sx.name, sx.tpe) zip Utils.create_exps(node.name, newType)) foreach {
+              (Utils.create_exps_connect(sx.name, sx.tpe) zip Utils.create_exps_connect(node.name, newType)) foreach {
                 case (from, to) => renames.rename(from.serialize, to.serialize)
               }
               WDefInstance(sx.info, node.name, sx.module, newType)
@@ -304,7 +304,7 @@ object Uniquify extends Transform {
               val mem = sx.copy(name = node.name, dataType = dataType)
               // Create new mapping to handle references to memory data fields
               val uniqueMemMap = createNameMapping(memType(sx), memType(mem))
-              (Utils.create_exps(sx.name, memType(sx)) zip Utils.create_exps(node.name, memType(mem))) foreach {
+              (Utils.create_exps_connect(sx.name, memType(sx)) zip Utils.create_exps_connect(node.name, memType(mem))) foreach {
                 case (from, to) => renames.rename(from.serialize, to.serialize)
               }
               nameMap(sx.name) = NameMapNode(node.name, node.elts ++ uniqueMemMap)
@@ -316,7 +316,7 @@ object Uniquify extends Transform {
             sinfo = sx.info
             if (nameMap.contains(sx.name)) {
               val node = nameMap(sx.name)
-              (Utils.create_exps(sx.name, s.asInstanceOf[DefNode].value.tpe) zip Utils.create_exps(node.name, sx.value.tpe)) foreach {
+              (Utils.create_exps_connect(sx.name, s.asInstanceOf[DefNode].value.tpe) zip Utils.create_exps_connect(node.name, sx.value.tpe)) foreach {
                 case (from, to) => renames.rename(from.serialize, to.serialize)
               }
               DefNode(sx.info, node.name, sx.value)
@@ -362,7 +362,7 @@ object Uniquify extends Transform {
         portTypeMap += (m.name -> uniquePortsType)
 
         ports zip uniquePortsType.fields map { case (p, f) =>
-          (Utils.create_exps(p.name, p.tpe) zip Utils.create_exps(f.name, f.tpe)) foreach {
+          (Utils.create_exps_connect(p.name, p.tpe) zip Utils.create_exps_connect(f.name, f.tpe)) foreach {
             case (from, to) => renames.rename(from.serialize, to.serialize)
           }
           Port(p.info, f.name, p.direction, f.tpe)
